@@ -3,8 +3,10 @@ package com.maryang.fastrxjava.ui.repos
 import com.maryang.fastrxjava.base.BaseViewModel
 import com.maryang.fastrxjava.data.repository.GithubRepository
 import com.maryang.fastrxjava.entity.GithubRepo
+import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.rxkotlin.plusAssign
+import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.BehaviorSubject
 import io.reactivex.subjects.PublishSubject
 import java.util.concurrent.TimeUnit
@@ -23,13 +25,18 @@ class GithubReposViewModel(
             .debounce(400, TimeUnit.MILLISECONDS)
             .distinctUntilChanged()
             .observeOn(AndroidSchedulers.mainThread())
-            .subscribe {
-                if (it.first.isEmpty()) return@subscribe
-                loadingState.onNext(it.second)
-                repository.searchGithubRepos(it.first) {
-                    loadingState.onNext(false)
-                    reposState.onNext(it)
-                }
+            .doOnNext{loadingState.onNext(it.second)}
+            .observeOn(Schedulers.io())
+            .switchMapSingle {
+                if (it.first.isEmpty()) Single.just(emptyList())
+                else repository.searchGithubRepos(it.first)
+            }.observeOn(AndroidSchedulers.mainThread())
+            .doOnNext{loadingState.onNext(false)}
+            .map {
+                it.filter{f -> f.star}
+            }
+            .subscribe{
+                reposState.onNext(it)
             }
     }
 

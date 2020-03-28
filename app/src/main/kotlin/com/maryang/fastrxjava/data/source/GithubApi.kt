@@ -13,7 +13,7 @@ interface GithubApi {
     @GET("search/repositories")
     fun searchRepos(
         @Query("q") search: String
-    ): Call<JsonElement>
+    ): Single<JsonElement>
 
     @GET("user/starred/{owner}/{repo}")
     fun checkStar(
